@@ -22,3 +22,13 @@ blueprints:
   security:
     issuer: "https://eci/blueprints"
     token-ttl-seconds: 3600
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
