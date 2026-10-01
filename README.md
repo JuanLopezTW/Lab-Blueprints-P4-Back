@@ -1,217 +1,177 @@
-# Escuela Colombiana de Ingeniería Julio Garavito
-## Arquitectura de Software – ARSW
+# Lab P4 — BluePrints en Tiempo Real (Sockets & STOMP)
 
+> **Repositorio:** `DECSIS-ECI/Lab_P4_BluePrints_RealTime-Sokets`  
+> **Front:** React + Vite (Canvas, CRUD, y selector de tecnología RT)  
+> **Backends guía (elige uno o compáralos):**
+> - **Socket.IO (Node.js):** https://github.com/DECSIS-ECI/example-backend-socketio-node-/blob/main/README.md
+> - **STOMP (Spring Boot):** https://github.com/DECSIS-ECI/example-backend-stopm/tree/main
 
-### Juan Manuel López Barrera - Laura Valentina Santiago Marquez
+## 🎯 Objetivo del laboratorio
+Implementar **colaboración en tiempo real** para el caso de BluePrints. El Front consume la API CRUD de la Parte 3 (o equivalente) y habilita tiempo real usando **Socket.IO** o **STOMP**, para que múltiples clientes dibujen el mismo plano de forma simultánea.
 
-
-### Laboratorio – Parte 2: BluePrints API con Seguridad JWT (OAuth 2.0)
-
-Este laboratorio extiende la **Parte 1** ([Lab_P1_BluePrints_Java21_API](https://github.com/DECSIS-ECI/Lab_P1_BluePrints_Java21_API)) agregando **seguridad a la API** usando **Spring Boot 3, Java 21 y JWT (OAuth 2.0)**.  
-El API se convierte en un **Resource Server** protegido por tokens Bearer firmados con **RS256**.  
-Incluye un endpoint didáctico `/auth/login` que emite el token para facilitar las pruebas.
-
----
-
-## Objetivos
-- Implementar seguridad en servicios REST usando **OAuth2 Resource Server**.
-- Configurar emisión y validación de **JWT**.
-- Proteger endpoints con **roles y scopes** (`blueprints.read`, `blueprints.write`).
-- Integrar la documentación de seguridad en **Swagger/OpenAPI**.
+Al finalizar, el equipo debe:
+1. Integrar el Front con su **API CRUD** (listar/crear/actualizar/eliminar planos, y total de puntos por autor).
+2. Conectar el Front a un backend de **tiempo real** (Socket.IO **o** STOMP) siguiendo los repos guía.
+3. Demostrar **colaboración en vivo** (dos pestañas navegando el mismo plano).
 
 ---
 
-## Requisitos
-- JDK 21
-- Maven 3.9+
-- Git
+## 🧩 Alcance y criterios funcionales
+- **CRUD** (REST):
+    - `GET /api/blueprints?author=:author` → lista por autor (incluye total de puntos).
+    - `GET /api/blueprints/:author/:name` → puntos del plano.
+    - `POST /api/blueprints` → crear.
+    - `PUT /api/blueprints/:author/:name` → actualizar.
+    - `DELETE /api/blueprints/:author/:name` → eliminar.
+- **Tiempo real (RT)** (elige uno):
+    - **Socket.IO** (rooms): `join-room`, `draw-event` → broadcast `blueprint-update`.
+    - **STOMP** (topics): `@MessageMapping("/draw")` → `convertAndSend(/topic/blueprints.{author}.{name})`.
+- **UI**:
+    - Canvas con **dibujo por clic** (incremental).
+    - Panel del autor: **tabla** de planos y **total de puntos** (`reduce`).
+    - Barra de acciones: **Create / Save/Update / Delete** y **selector de tecnología** (None / Socket.IO / STOMP).
+- **DX/Calidad**: código limpio, manejo de errores, README de equipo.
 
 ---
 
-## Ejecución del proyecto
-1. Clonar o descomprimir el proyecto:
-   ```bash
-   git clone https://github.com/DECSIS-ECI/Lab_P2_BluePrints_Java21_API_Security_JWT.git
-   cd Lab_P2_BluePrints_Java21_API_Security_JWT
-   ```
-   ó si el profesor entrega el `.zip`, descomprimirlo y entrar en la carpeta.
+## 🏗️ Arquitectura (visión rápida)
 
-2. Ejecutar con Maven:
-   ```bash
-   mvn -q -DskipTests spring-boot:run
-   ```
+```
+React (Vite)
+ ├─ HTTP (REST CRUD + estado inicial) ───────────────> Tu API (P3 / propia)
+ └─ Tiempo Real (elige uno):
+     ├─ Socket.IO: join-room / draw-event ──────────> Socket.IO Server (Node)
+     └─ STOMP: /app/draw -> /topic/blueprints.* ────> Spring WebSocket/STOMP
+```
 
-3. Verificar que la aplicación levante en `http://localhost:8080`.
+**Convenciones recomendadas**
+- **Plano como canal/sala**: `blueprints.{author}.{name}`
+- **Payload de punto**: `{ x, y }`
 
 ---
 
-## Endpoints principales
+## 📦 Repos guía (clona/consulta)
+- **Socket.IO (Node.js)**: https://github.com/DECSIS-ECI/example-backend-socketio-node-/blob/main/README.md
+    - *Uso típico en el cliente:* `io(VITE_IO_BASE, { transports: ['websocket'] })`, `join-room`, `draw-event`, `blueprint-update`.
+- **STOMP (Spring Boot)**: https://github.com/DECSIS-ECI/example-backend-stopm/tree/main
+    - *Uso típico en el cliente:* `@stomp/stompjs` → `client.publish('/app/draw', body)`; suscripción a `/topic/blueprints.{author}.{name}`.
 
-### 1. Login (emite token)
-```
-POST http://localhost:8080/auth/login
-Content-Type: application/json
+---
 
-{
-  "username": "student",
-  "password": "student123"
-}
+## ⚙️ Variables de entorno (Front)
+Crea `.env.local` en la raíz del proyecto **Front**:
+```bash
+# REST (tu backend CRUD)
+VITE_API_BASE=http://localhost:8080
+
+# Tiempo real: apunta a uno u otro según el backend que uses
+VITE_IO_BASE=http://localhost:3001     # si usas Socket.IO (Node)
+VITE_STOMP_BASE=http://localhost:8080  # si usas STOMP (Spring)
 ```
-Respuesta:
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_in": 3600
-}
+En la UI, selecciona la tecnología en el **selector RT**.
+
+---
+
+## 🚀 Puesta en marcha
+
+### 1) Backend RT (elige uno)
+
+**Opción A — Socket.IO (Node.js)**  
+Sigue el README del repo guía:  
+https://github.com/DECSIS-ECI/example-backend-socketio-node-/blob/main/README.md
+```bash
+npm i
+npm run dev
+# expone: http://localhost:3001
+# prueba rápida del estado inicial:
+curl http://localhost:3001/api/blueprints/juan/plano-1
 ```
 
-### 2. Consultar blueprints (requiere scope `blueprints.read`)
-```
-GET http://localhost:8080/api/blueprints
-Authorization: Bearer <ACCESS_TOKEN>
+**Opción B — STOMP (Spring Boot)**  
+Sigue el repo guía:  
+https://github.com/DECSIS-ECI/example-backend-stopm/tree/main
+```bash
+./mvnw spring-boot:run
+# expone: http://localhost:8080
+# endpoint WS (ej.): /ws-blueprints
 ```
 
-### 3. Crear blueprint (requiere scope `blueprints.write`)
+### 2) Front (este repo)
+```bash
+npm i
+npm run dev
+# http://localhost:5173
 ```
-POST http://localhost:8080/api/blueprints
-Authorization: Bearer <ACCESS_TOKEN>
-Content-Type: application/json
+En la interfaz: selecciona **Socket.IO** o **STOMP**, define `author` y `name`, abre **dos pestañas** y dibuja en el canvas (clics).
 
-{
-  "name": "Nuevo Plano"
-}
+---
+
+## 🔌 Protocolos de Tiempo Real (detalle mínimo)
+
+### A) Socket.IO
+- **Unirse a sala**
+```js
+  socket.emit('join-room', `blueprints.${author}.${name}`)
+```
+- **Enviar punto**
+```js
+  socket.emit('draw-event', { room, author, name, point: { x, y } })
+```
+- **Recibir actualización**
+```js
+  socket.on('blueprint-update', (upd) => { /* append points y repintar */ })
+```
+
+### B) STOMP
+- **Publicar punto**
+```js
+  client.publish({ destination: '/app/draw', body: JSON.stringify({ author, name, point }) })
+```
+- **Suscribirse a tópico**
+```js
+  client.subscribe(`/topic/blueprints.${author}.${name}`, (msg) => { /* append points y repintar */ })
 ```
 
 ---
 
-## Swagger UI
-- URL: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
-- Pulsa **Authorize**, ingresa el token en el formato:
-  ```
-  Bearer eyJhbGciOi...
-  ```
+## 🧪 Casos de prueba mínimos
+- **Estado inicial**: al seleccionar plano, el canvas carga puntos (`GET /api/blueprints/:author/:name`).
+- **Dibujo local**: clic en canvas agrega puntos y redibuja.
+- **RT multi-pestaña**: con 2 pestañas, los puntos se **replican** casi en tiempo real.
+- **CRUD**: Create/Save/Delete funcionan y refrescan la lista y el **Total** del autor.
 
 ---
 
-## Estructura del proyecto
-```
-src/main/java/co/edu/eci/blueprints/
-  ├── api/BlueprintController.java       # Endpoints protegidos
-  ├── auth/AuthController.java           # Login didáctico para emitir tokens
-  ├── config/OpenApiConfig.java          # Configuración Swagger + JWT
-  └── security/
-       ├── SecurityConfig.java
-       ├── MethodSecurityConfig.java
-       ├── JwtKeyProvider.java
-       ├── InMemoryUserService.java
-       └── RsaKeyProperties.java
-src/main/resources/
-  └── application.yml
-```
+## 📊 Entregables del equipo
+1. Código del Front integrado con **CRUD** y **RT** (Socket.IO o STOMP).
+2. **Video corto** (≤ 90s) mostrando colaboración en vivo y operaciones CRUD.
+3. **README del equipo**: setup, endpoints usados, decisiones (rooms/tópicos), y (opcional) breve comparativa Socket.IO vs STOMP.
 
 ---
 
-## Actividades propuestas
-1. Revisar el código de configuración de seguridad (`SecurityConfig`) e identificar cómo se definen los endpoints públicos y protegidos.
-
-- El authorizeHttpRequest es el encargado dententro de Spring Security de evaluar, para
-cada request que llega contra que regla hace mach, en este caso los enpoinds publicos se definen bajo
-"permitAll()" que en este caso es el actuator del estado de salud del contenedor y auth para logearse,
-adiccionalmente tambien queda abierta la documentacion de la api
-
-
-- para las rutas protegidas tenemos "hasAnyAuthority()" que en este caos exige que el token
-tenga almenos alguno de los 2 scopes definidos, "anyRequest(9.Authenticated()" es la regla por defecto
-para cualquier otra ruta que no tenga match con las anteriores.
-
-
-2. Explorar el flujo de login y analizar las claims del JWT emitido.
-
-- ![logginfuncional.png](docs/lab2/punto2/logginfuncional.png)
-El logging se realiza mediante el endpoint de auth con los parametros de username y password, una vez
-se valida que ambos sean correctos se dispensara un token jwt como se muestra en la imagen con su respectivo
-tiempo de expiracion
-
-
-
-- ![AnalisisDeClams.png](docs/lab2/punto2/AnalisisDeClams.png)
-Decodificando el token mediante JWT.io podemos ver que su firmado es de tipo RSA "RS256"
-que se genera en memoria por el JwtKeyProvider en el payload el emisor iss es el configurado en
-el aplication.yml, tambien podemos ver el usuario autentificado "student", el iat/exp emision y expiracion
-y el scope, en este caso el usuario recibe ambos scopes en un solo loggin
-cosa que se modificara en el punto 3.
-
-
-
-3. Extender los scopes (`blueprints.read`, `blueprints.write`) para controlar otros endpoints de la API, del laboratorio P1 trabajado.
-
-
-- para extender los scope se modifico AuthController para que el scope embebido en el JWT
-dependa del usuario que hace login, en lugar de que siempre tenga los 2 scopes,
-student solo recibe el scope de read mientras qeu el assitant recive ambos,
-para poder definir quien podia usar que enpoint en base a sus scopes se agrego la etiqueta de
-@PreAuthorize con SCOPE_blueprints.read a los metodos getAll,byAuthor y byAuthorAndName, por otra parte se agrego con
-SCOPE_blueprints.write a los enpoints de add y addPoint, asi el se valida si se tiene el scope adecuado a continuacion se veran
-ejemplo en base al tipo de usuario:
-
-![NovoScopeStudent.png](docs/lab2/punto3/NovoScopeStudent.png)
-
-![TokenDeEstudianteConSoloUnScope.png](docs/lab2/punto3/TokenDeEstudianteConSoloUnScope.png)
-
-El estudiante inicia sesion con la nueva modificacion de scope y al revisar su JWT en JWT.io podemos observar como ahora solo tiene
-el scope de "read" lo que no le permite realizar acciones de adiccion o modificacion por ende solo puede usar los metodos
-de consulta "get"
-
-![LogginEsdudianteConReadOnly.png](docs/lab2/punto3/LogginEsdudianteConReadOnly.png)
-
-En esta imagen el estudiante intenta agregar un blueprint y vemos como le suelta un error HTTP 403
-con la leyenda de "scope inadecuado" confirmando que no puede usar este tipo de accion
-
-![AssitantConPermisoWirte.png](docs/lab2/punto3/AssitantConPermisoWirte.png)
-
-por ultimo cambiamos el JWT al de un Assistant y intentamos realizar la misma accion para ver como
-esta vez si da un 201 Denotando que se creo con exito.
-
-
-
-4. Modificar el tiempo de expiración del token y observar el efecto.
-
-Se modificó la propiedad blueprints.security.token-ttl-seconds en application.yml, reduciéndola de 3600 a 30 segundos, 
-para observar el efecto de la expiración del JWT. Tras reiniciar la aplicación, se generó un token mediante POST /auth/login y 
-se usó de inmediato en GET /api/v1/blueprints, obteniendo una respuesta 200 OK. Al reutilizar el mismo token pasados los 30 segundos, 
-la API respondió 401 Unauthorized, confirmando que el Resource Server valida correctamente la claim exp del JWT y 
-rechaza tokens expirados sin necesidad de lógica adicional en el código — el comportamiento es controlado enteramente por la configuración.
-
-#### Evidencias
-
-![POST inicial](docs/lab2/punto4/post.png)
-
-![GET_EXITOSO](docs/lab2/punto4/post_EXITOSO.png)
-
-![GET_FALLIDO](docs/lab2/punto4/post_Noautorizado.png)
-
-5. Documentar en Swagger los endpoints de autenticación y de negocio.
-
-Se documentaron los endpoints de autenticación (`POST /auth/login`) y de negocio (`/api/v1/blueprints/**`) usando anotaciones de `springdoc-openapi` (`@Tag`, `@Operation`, `@ApiResponses`).
-
-- El controlador BlueprintsAPIController ya contaba con documentación detallada de cada operación (GET, POST, PUT), incluyendo los scopes requeridos (blueprints.read / blueprints.write) reflejados mediante @PreAuthorize, todo esto realizado en la primera parte del laboratorio.
-- Se agregó documentación equivalente al AuthController, agrupándolo bajo el tag "Autenticación", con la descripción del flujo de login (validación de credenciales y emisión de un JWT con los scopes correspondientes al usuario) y los posibles códigos de respuesta (`200` login exitoso, `401` credenciales inválidas).
-- El esquema de seguridad Bearer JWT está configurado globalmente en `OpenApiConfig`, permitiendo autorizar todas las peticiones protegidas desde el botón Authorize de Swagger UI.
-
-#### Evidencias
-
-![Swagger_Blueprints](docs/lab2/punto5/swagger_blueprints.png)
-
-![Swagger_Autenticacion](docs/lab2/punto5/swagger_autenticacion.png)
-
-
-## Lecturas recomendadas
-- [Spring Security Reference – OAuth2 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/index.html)
-- [Spring Boot – Securing Web Applications](https://spring.io/guides/gs/securing-web/)
-- [JSON Web Tokens – jwt.io](https://jwt.io/introduction)
+## 🧮 Rúbrica sugerida
+- **Funcionalidad (40%)**: RT estable (join/broadcast), aislamiento por plano, CRUD operativo.
+- **Calidad técnica (30%)**: estructura limpia, manejo de errores, documentación clara.
+- **Observabilidad/DX (15%)**: logs útiles (conexión, eventos), health checks básicos.
+- **Análisis (15%)**: hallazgos (latencia/reconexión) y, si aplica, pros/cons Socket.IO vs STOMP.
 
 ---
 
-## Licencia
-Proyecto educativo con fines académicos – Escuela Colombiana de Ingeniería Julio Garavito.
+## 🩺 Troubleshooting
+- **Pantalla en blanco (Front)**: revisa consola; confirma `@vitejs/plugin-react` instalado y que `AppP4.jsx` esté en `src/`.
+- **No hay broadcast**: ambas pestañas deben hacer `join-room` al **mismo** plano (Socket.IO) o suscribirse al **mismo tópico** (STOMP).
+- **CORS**: en dev permite `http://localhost:5173`; en prod, **restringe orígenes**.
+- **Socket.IO no conecta**: fuerza transporte WebSocket `{ transports: ['websocket'] }`.
+- **STOMP no recibe**: verifica `brokerURL`/`webSocketFactory` y los prefijos `/app` y `/topic` en Spring.
+
+---
+
+## 🔐 Seguridad (mínimos)
+- Validación de payloads (p. ej., zod/joi).
+- Restricción de orígenes en prod.
+- Opcional: **JWT** + autorización por plano/sala.
+
+---
+
+## 📄 Licencia
+MIT (o la definida por el curso/equipo).

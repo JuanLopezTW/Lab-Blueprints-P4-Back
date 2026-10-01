@@ -7,11 +7,14 @@ public interface BlueprintPersistence {
 
     void saveBlueprint(Blueprint bp) throws BlueprintPersistenceException;
 
+    void deleteBlueprint(String author, String name) throws BlueprintNotFoundException;
+
     Blueprint getBlueprint(String author, String name) throws BlueprintNotFoundException;
 
     Set<Blueprint> getBlueprintsByAuthor(String author) throws BlueprintNotFoundException;
 
     Set<Blueprint> getAllBlueprints();
+
 
     void addPoint(String author, String name, int x, int y) throws BlueprintNotFoundException;
 }

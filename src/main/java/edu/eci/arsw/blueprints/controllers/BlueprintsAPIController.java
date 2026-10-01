@@ -114,6 +114,26 @@ public class BlueprintsAPIController {
         }
     }
 
+    // DELETE /blueprints/{author}/{bpname}
+    @Operation(summary = "Eliminar un blueprint")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Blueprint eliminado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Blueprint no encontrado")
+    })
+    @PreAuthorize("hasAuthority('SCOPE_blueprints.write')")
+    @DeleteMapping("/{author}/{bpname}")
+    public ResponseEntity<ApiResponse<?>> delete(@Parameter(description = "Nombre del autor") @PathVariable String author,
+                                                 @Parameter(description = "Nombre del blueprint") @PathVariable String bpname) {
+        try {
+            services.deleteBlueprint(author, bpname);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ApiResponse<>(200, "execute ok", null));
+        } catch (BlueprintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        }
+    }
+
     public record NewBlueprintRequest(
             @NotBlank String author,
             @NotBlank String name,
